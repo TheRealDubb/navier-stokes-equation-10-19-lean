@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use or build on this formalization, please cite the accompanying technical note and repository."
+type: software
+title: "A Lean-Verified Alternative Proof of the Pressure-Flux Estimate in Navier–Stokes Lemma 10.5"
+authors:
+  - family-names: Winarski
+    given-names: Troy
+    orcid: "https://orcid.org/0009-0004-5956-3825"
+version: 0.1.0
+date-released: 2026-11-18
+abstract: "Lean companion formalization of the physical B_R-only pressure-flux estimate, equation (10.19), using two cutoff commutators and L2 estimates. Independent external review pending."
+keywords:
+  - Lean
+  - Navier-Stokes
+  - pressure flux
+  - formal verification

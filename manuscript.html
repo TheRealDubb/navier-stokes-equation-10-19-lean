@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><title>A Lean-Verified Alternative Proof of the Pressure-Flux Estimate in Navier–Stokes Lemma 10.5</title><style>@page{size:letter;margin:15mm}*{box-sizing:border-box}body{font:16px/1.55 Georgia,'DejaVu Serif',serif;color:#192f33;margin:0;background:#f4f7f6}section{background:white;max-width:54rem;margin:2rem auto;padding:3.1rem 3.3rem;border-top:2px solid #155954}h1{font-size:2.0rem;line-height:1.18}h2{font-size:1.55rem;line-height:1.25}h3{font-size:1.14rem;margin:1.1em 0 .24em}p{margin:.4em 0 .75em}sup,sub{font-size:.72em;line-height:0}.eq,pre{background:#f0f5f4;padding:.7em 1em}.eq{font-size:1.1rem}.trace,code,pre{font-family:'DejaVu Sans Mono',Consolas,monospace}.trace{font-size:.78em;color:#155954}.author{font:bold 1.05em 'DejaVu Sans',Arial,sans-serif}.meta,.small{font-size:.9em}.reference{padding-left:1.7em;text-indent:-1.7em}pre{font-size:.73em;white-space:pre-wrap;overflow-wrap:anywhere}a{color:#155954}@media print{body{background:white}section{break-after:page;margin:0;border:0;max-width:none;padding:0}section:last-child{break-after:auto}}</style></head><body>
+<section id="result" data-title="The physical pressure-flux estimate">
+<h1>A Lean-Verified Alternative Proof of the Pressure-Flux Estimate in Navier–Stokes Lemma 10.5</h1>
+<p class="author">Troy Winarski</p>
+<p class="meta">Human research director  ·  ORCID 0009-0004-5956-3825</p>
+<h3>Abstract</h3>
+<p>OpenAI’s written proof of (10.19) estimates a local pressure term in L<sup>3/2</sup>. The corresponding upstream Lean development bounds the physical flux by an expression that also involves localized velocity dissipation. We give a companion Lean proof of the printed velocity-only bound. A second cutoff commutation moves two further powers of the cutoff onto the stress tensor. The resulting local pairing admits an L² estimate, while both commutator errors retain the required decay in the radius. The argument allows an essential-in-time energy bound for the competing velocity. Its conclusion holds at every interior time, with one constant for the whole slab. [1, 2, 8]</p>
+<h3>The physical estimate</h3>
+<p>Let u, v be the reference and competing velocities on ℝ³, with respective pressures p, P. Write w = v − u and π = P − p. Choose a fixed smooth compactly supported φ with 0 ≤ φ ≤ 1 and φ = 1 on the unit ball. At a radius R set</p>
+<p class="eq">ρ(x) = φ(x/R),   χ<sub>R</sub> = ρ<sup>8</sup>,   B<sub>R</sub>(t) = ‖ρ<sup>4</sup>w(t)‖<sub>6</sub>.</p>
+<p>Under the slab hypotheses on page 2, there is C<sub>T</sub> ≥ 0 such that for every R ≥ 1 and every 0 &lt; t &lt; T, the following holds with B = B<sub>R</sub>(t).</p>
+<p class="eq">|∫<sub>ℝ³</sub> π(t,x) w(t,x) · ∇χ<sub>R</sub>(x) dx|<br/> ≤ (C<sub>T</sub>/R) [(B + 1)B<sup>1/2</sup> + R<sup>−3/4</sup>B<sup>3/4</sup>].   (10.19)</p>
+<p class="small">The right-hand side uses the fourth-power weighted L⁶ velocity norm at the same radius as the physical cutoff. The manuscript asserts the inequality for almost every interior time. The companion yields it for each such time. Appendix A gives the estimates and an explicit admissible constant.</p>
+</section>
+<section id="formal" data-title="Formal statement and hypotheses">
+<h2>1. Formal statement and hypotheses</h2>
+<p>Fix T &gt; 0. Both velocities and pressures are smooth on the closed slab [0,T] × ℝ³. Both velocities have zero divergence and the same viscosity-one Navier–Stokes residual on the interior, expressing equality of the applied force. One compact set contains the spatial supports of u at all slab times. The spatial L² norm of v has a finite essential bound in time. All spatial norms and integrals use Lebesgue volume.</p>
+<p class="small">The following is the signature of <code>NavierStokesR3.Paper1019.equation_10_19</code> in <code>lean/Paper1019.lean</code>. Line wrapping is typographical.</p>
+<pre>theorem equation_10_19 {T : ℝ} (hT : 0 &lt; T) {u v : VelocityField} {p P : PressureField}
+    {K : Set Space} (hu : ContDiffOn ℝ ∞ u (slab 0 T)) (hv : ContDiffOn ℝ ∞ v (slab 0 T))
+    (hp : ContDiffOn ℝ ∞ p (slab 0 T)) (hP : ContDiffOn ℝ ∞ P (slab 0 T)) (hK : IsCompact K)
+    (hsupp : ∀ t ∈ Icc (0 : ℝ) T, tsupport (fun x =&gt; u (t,x)) ⊆ K)
+    (hev : ∃ M : ℝ, 0 ≤ M ∧ ∀ᵐ t ∂volume.restrict (Icc (0 : ℝ) T),
+      MemLp (fun x : Space =&gt; v (t,x)) 2 volume ∧
+        comparisonLpNorm 2 (fun x : Space =&gt; v (t,x)) ≤ M)
+    (hdu : ∀ t ∈ Ioo (0 : ℝ) T, ∀ x, NavierStokes.ProblemStatement.spatialDivergence u t x = 0)
+    (hdv : ∀ t ∈ Ioo (0 : ℝ) T, ∀ x, NavierStokes.ProblemStatement.spatialDivergence v t x = 0)
+    (hNS : ∀ t ∈ Ioo (0 : ℝ) T, ∀ x, navierStokesResidual 1 u p t x = navierStokesResidual 1 v P t x)
+    {φ : Space → ℝ} (hφ : ContDiff ℝ ∞ φ) (hc : HasCompactSupport φ)
+    (hφ0 : ∀ x, 0 ≤ φ x) (hφ1 : ∀ x, φ x ≤ 1)
+    (_hunit : ∀ x : Space, ‖x‖ ≤ 1 → φ x = 1) :
+    ∃ C_T : ℝ, 0 ≤ C_T ∧ ∀ R : ℝ, 1 ≤ R → ∀ t ∈ Ioo (0 : ℝ) T,
+      let ρ := PaperFluxScaling.scaled φ R
+      let B := comparisonLpNorm 6 (fun x =&gt; ρ x ^ 4 • (v (t,x) - u (t,x)))
+      |∫ x : Space, (P (t,x) - p (t,x)) * fderiv ℝ (fun y =&gt; ρ y ^ 8) x
+        (v (t,x) - u (t,x))| ≤ C_T / R * ((B + 1) * B ^ (1/2 : ℝ) + R ^ (-(3/4 : ℝ)) * B ^ (3/4 : ℝ))</pre>
+<h3>Reading the signature</h3>
+<p class="small">The spatial Fréchet derivative <code>fderiv</code> of ρ⁸ applied to v − u is the directional derivative w · ∇χ<sub>R</sub>. The premise <code>hev</code> puts L² membership and a uniform bound on the same full-measure set of times. The conclusion chooses C<sub>T</sub> before quantifying over R and t. The proof uses neither an initial-data equality nor a magnitude bound on the competing pressure.</p>
+<p class="small">The zero case is also checked separately. If B = 0, the weighted velocity vanishes almost everywhere. At such points either ρ = 0 or w = 0, so the physical integrand vanishes. This follows for any pressure from <code>PaperFluxZero.integrand_ae_zero</code>.</p>
+</section>
+<section id="precedents" data-title="Prior work and numerical comparison">
+<h2>2. Prior work and numerical comparison</h2>
+<h3>Written estimates and the reported discrepancy</h3>
+<p>OpenAI states (10.19) after commuting the fourth-power cutoff through the double Riesz transform and estimating the local term in L<sup>3/2</sup> [1]. KokunoYumeto’s pinned workbench records the same normalized expression as (E.21) [3]. Open Maths derives the quantitative bound before absorption into C<sub>T</sub> in its re-audit [4]. Bastounis, Circelli and Hansen identify the change between the printed argument and the upstream Lean estimate, whose right-hand side also contains the localized gradient norm A<sub>R</sub> [2, §3.2].</p>
+<h3>Related formalizations</h3>
+<p>MathGraph proves a bound for a legacy canonical weighted-pressure pairing and develops a transpose identity [5]. Its polynomial upper bound is proportional to R<sup>−1</sup>(B<sup>3/2</sup> + B + 1). Specializing the underlying raw bound at R = L = M = V = 1 leaves a nonnegative contribution of 16 for every B. The pairing also requires an identification with the physical flux. The later MathGraph comparison work records (10.19) as open [5].</p>
+<p>Bourakkadi’s Layer 7 verifies conditional scalar scaling, absorption and cancellation identities relevant to the comparison [6]. Hunt reports a formal estimate using enlarged cutoff radii and weighted dissipation [7]. His support example concerns radius dilations. For the original powers, the zero-case lemma on page 2 gives a vanishing physical integrand whenever B = 0.</p>
+<h3>A scalar test for numerical implication</h3>
+<p>Fix the radius at one and take B(t) = t⁴, F(t) = t on 0 &lt; t &lt; 1. These scalar data meet the raw upper bound above. For any proposed constant C ≥ 0, the target right-hand side is bounded by</p>
+<p class="eq">C[(1 + t⁴)t² + t³] ≤ 3Ct².</p>
+<p class="small">Thus F(t) exceeds the target on an interval of positive length for every fixed C. This establishes failure of numerical domination even with a null exceptional set of times. Additional arguments using the fields or their equations could still yield (10.19). The continuous-family calculation is analytic. The separate audit theorem <code>PressureReview.no_uniform_scalar_implication</code> kernel-checks the positive scalar witness for each C.</p>
+<p class="small">The contribution offered here is the attached proof for the physical, normalized estimate with a second commutator. The public-source search found earlier written derivations and related Lean results. Historical priority for this argument or an exact formalization remains unresolved.</p>
+</section>
+<section id="verification" data-title="Verification, reproducibility and contributions">
+<h2>3. Verification and research contributions</h2>
+<h3>Local verification</h3>
+<p>The frozen build uses Lean 4.34.0-rc2, the OpenAI revision in [8], and the locked Mathlib revision below. A clean Windows build with the official dependency cache reproduced all 58 upstream and 14 companion module objects byte-for-byte. A second checkout built the dependencies from source with the cache disabled. All 3,133 main dependency objects matched their official counterparts by SHA-256. Using those source-built dependencies, all 72 project objects and the fresh theorem-import log again matched the frozen originals.</p>
+<p>The native kernel checker replayed all 14 companion modules. An expanded inspection of 70 companion declarations found only subsets of <code>propext</code>, <code>Classical.choice</code> and <code>Quot.sound</code>. The project dependency trace covers 731 reachable declarations and includes pressure-gradient recovery and both commutators. Velocity uniqueness and the global blowup theorem play no role in this derivation. Both replays share one Windows host and the released compiler and standard library. External reproduction remains open.</p>
+<h3>Reproducing the checks</h3>
+<p>The public companion sources are in <code>lean/</code>. See <code>REPRODUCIBILITY.md</code> to check their hashes and build them against the pinned public dependencies. The two earlier replays are documented in private verification records. Independent reproduction on a second machine and external mathematical review are pending.</p>
+<p class="trace">Lean compiler   6a10ac8c22beadecabdbb0919c2b50214762f91d<br/>Mathlib         85e3a25e006c35636f0e53b0e9296caca2685bc0<br/>OpenAI          f9e8bc5b38b6e212696e8a30e3e91517af887bbd</p>
+<h3>Research direction and AI contribution</h3>
+<p>Troy Winarski selected the research objective, set priorities, authorized resource allocation and required formal verification. The AI research system developed the two-commutator argument for this project, implemented the Lean companion, and performed the documented verification procedures. The proof terms, their interpretation under the stated hypotheses and the reproducible checks support the mathematical claims. The human submitter retains responsibility for reviewing the final text and deciding whether to submit.</p>
+<p class="small">The verified result is the normalized pressure-flux estimate. Formalizing the manuscript’s general L<sup>3/2</sup> argument and assessing the full blowup construction are separate mathematical tasks.</p>
+</section>
+<section id="appendix-1" data-title="Appendix A. From the physical flux to three pairings">
+<h2>Appendix A. From the physical flux to three pairings</h2>
+<h3>A.1. Pressure recovery on a time slice</h3>
+<p>Fix 0 &lt; t &lt; T and R ≥ 1. Write w = v − u, π = P − p, ρ(x) = φ(x/R), χ<sub>R</sub> = ρ<sup>8</sup> and B = ‖ρ<sup>4</sup>w‖<sub>6</sub>. The fixed smooth compact cutoff satisfies 0 ≤ φ ≤ 1 and equals one on the unit ball. Put L ≥ ‖∇φ‖<sub>∞</sub> and a = 8L. The chain rule gives ∇χ<sub>R</sub> = 8ρ<sup>7</sup>∇ρ and ‖∇ρ‖<sub>∞</sub> ≤ L/R.</p>
+<p>For D<sub>ij</sub> = R<sub>i</sub>R<sub>j</sub>, put g<sub>ij</sub> = u<sub>i</sub>u<sub>j</sub> − v<sub>i</sub>v<sub>j</sub> and ψ<sub>k</sub> = 8ρ<sup>k</sup>∇ρ · (u − v). The pairing ⟨f,h⟩ denotes ∫ fh dx. Testing the recovered pressure gradient against the compact vector field ρ<sup>8</sup>(u − v) and using zero divergence gives</p>
+<p class="eq">F = ∫ π w · ∇χ<sub>R</sub> dx = Re ∑<sub>i,j</sub> ⟨g<sub>ij</sub>, D<sub>ij</sub>ψ<sub>7</sub>⟩.</p>
+<p class="small">Both pressure and velocity differences reverse signs in the upstream convention. A spatially constant pressure correction contributes zero because the test field is compactly supported and w is divergence-free.</p>
+<p class="trace">ActualPressureFlux.pressure_flux_eq_canonical · Paper1019.physical_le_of_pair · PaperFluxScaling.exists_bounds</p>
+<h3>A.2. Two exact decompositions and the local estimate</h3>
+<p>Suppress i,j. Define E(h,f,ψ) = ⟨f,D(hψ) − hDψ⟩. Using ψ<sub>7</sub> = ρ<sup>4</sup>ψ<sub>3</sub> and ψ<sub>3</sub> = ρ²ψ<sub>1</sub> gives the following two identities.</p>
+<p class="eq">⟨g,Dψ<sub>7</sub>⟩ = ⟨ρ<sup>4</sup>g,Dψ<sub>3</sub>⟩ + E(ρ<sup>4</sup>,g,ψ<sub>3</sub>),<br/>⟨ρ<sup>4</sup>g,Dψ<sub>3</sub>⟩ = ⟨ρ<sup>6</sup>g,Dψ<sub>1</sub>⟩ + E(ρ²,ρ<sup>4</sup>g,ψ<sub>1</sub>).</p>
+<p>Energy gives g ∈ L¹. The localized tensors are continuous with compact support, hence lie in L<sup>6/5</sup>. Their products with transformed Schwartz tests are integrable by Hölder. For the local term, take M ≥ ‖w‖<sub>2</sub> and U<sub>q</sub> ≥ ‖u‖<sub>q</sub>. Since ρ⁶|g| ≤ (ρ²|w|)(ρ⁴|w| + 2|u|), Hölder with exponents 3 and 6 and interpolation in A.3 give</p>
+<p class="eq">‖ρ<sup>6</sup>g‖<sub>2</sub> ≤ M<sup>1/2</sup>B<sup>1/2</sup>(B + 2U<sub>6</sub>),    ‖ψ<sub>1</sub>‖<sub>2</sub> ≤ aM/R.</p>
+<p class="small">The double-Riesz multiplier has L² operator norm at most one. Cauchy–Schwarz bounds the local pairing by the product of these two quantities.</p>
+<p class="trace">PressureFlux.pressurePair_decomposition · PaperFluxDecomposition.split_twice · PaperFluxDecomposition.local_l2_bound · LocalizedFluxTensor.tensorDiff_bounds</p>
+</section>
+<section id="appendix-2" data-title="Appendix A. Commutator bounds and uniformity">
+<h2>Appendix A. Commutator bounds and uniformity</h2>
+<h3>A.3. The two commutator bounds</h3>
+<p>Weighted interpolation uses the endpoints ‖w‖<sub>2</sub> ≤ M and ‖ρ<sup>4</sup>w‖<sub>6</sub> = B. Pointwise, ρ²|w| = |w|<sup>1/2</sup>(ρ⁴|w|)<sup>1/2</sup> and ρ³|w| = |w|<sup>1/4</sup>(ρ⁴|w|)<sup>3/4</sup>. Hölder and 0 ≤ ρ ≤ 1 give</p>
+<p class="eq">‖ρ<sup>3</sup>w‖<sub>3</sub> ≤ ‖ρ²w‖<sub>3</sub> ≤ M<sup>1/2</sup>B<sup>1/2</sup>,    ‖ρ<sup>3</sup>w‖<sub>4</sub> ≤ M<sup>1/4</sup>B<sup>3/4</sup>.</p>
+<p>Thus ‖ψ<sub>3</sub>‖<sub>4</sub> ≤ (a/R)M<sup>1/4</sup>B<sup>3/4</sup>. Applying Hölder to ρ<sup>3</sup>|w| and ρ(|w| + 2|u|) gives ‖ρ<sup>4</sup>g‖<sub>4/3</sub> ≤ M<sup>1/4</sup>B<sup>3/4</sup>(M + 2U<sub>2</sub>). The heat representation bounds the absolute commutator kernel by a cutoff-dependent multiple of H<sub>R</sub>(z) = |z|<sup>−3</sup> min(|z|/R,1). Scaling in three dimensions gives ‖H<sub>R</sub>‖<sub>4/3</sub> = R<sup>−3/4</sup>‖H<sub>1</sub>‖<sub>4/3</sub>.</p>
+<p>Set K<sub>1</sub> = k max(4L,1) and K<sub>2</sub> = k max(2L,1), where k is the universal Riesz commutator constant. For measurable cutoffs ρ² and ρ, the Lipschitz bounds are 2L/R and L/R. The squared-cutoff estimates therefore give</p>
+<p class="eq">|E(ρ<sup>4</sup>,g,ψ<sub>3</sub>)| ≤ K<sub>1</sub>R<sup>−3/4</sup> ‖g‖<sub>1</sub> ‖ψ<sub>3</sub>‖<sub>4</sub>,<br/>|E(ρ²,ρ<sup>4</sup>g,ψ<sub>1</sub>)| ≤ K<sub>2</sub>R<sup>−3/4</sup> ‖ρ<sup>4</sup>g‖<sub>4/3</sub> ‖ψ<sub>1</sub>‖<sub>2</sub>.</p>
+<p class="small">The first convolution maps L¹ into L<sup>4/3</sup> with kernel H<sub>R</sub>. In the second, two measurable L<sup>4/3</sup> factors convolve into L². The smooth compact tests also belong to L⁴ as required in the heat representation. Both remainders acquire the additional R<sup>−1</sup> from ∇ρ in their test.</p>
+<p class="trace">WeightedInterpolation.cutoff_interpolation_three · WeightedInterpolation.cutoff_interpolation_four · Lemma105PaperFlux.residual_three_four · Comparison.radialCommutatorKernel_lpNorm_scale · Comparison.riesz_commutator_pair_bound · MixedRieszCommutator.riesz_commutator_pair_bound</p>
+<h3>A.4. One constant for the whole slab</h3>
+<p>At each t ∈ [0,T] choose good times tending to t where ‖v‖<sub>2</sub> ≤ M<sub>v</sub>. Slab continuity gives spatial pointwise convergence. Fatou applied to squared velocities yields ∫|v(t,x)|² dx ≤ M<sub>v</sub>², including the endpoints. Continuity and common compact support bound U<sub>2</sub>,U<sub>6</sub> uniformly. Energy then supplies uniform M and G ≥ max<sub>ij</sub> ‖g<sub>ij</sub>‖<sub>1</sub>.</p>
+<p>Sum the three bounds and the nine tensor components. Using B + 2U<sub>6</sub> ≤ (1 + 2U<sub>6</sub>)(B + 1), the following choice gives (10.19) for every R ≥ 1 and every interior t.</p>
+<p class="eq">C<sub>T</sub> = 9 max{aM<sup>3/2</sup>(1 + 2U<sub>6</sub>), aM<sup>1/4</sup>[K<sub>1</sub>G + K<sub>2</sub>M(M + 2U<sub>2</sub>)]}.</p>
+<p class="trace">EssentialEnergy.uniformFiniteEnergy_of_ae_bound · FluxEnvelope.exists_uniform_slice_bounds · PaperFluxSlice.pair_three_term · FluxEnvelope.exists_scalar_envelope · Paper1019.exists_uniform_physical_bound</p>
+<p class="small">The supplemental quantitative corollary <code>Paper1019.physical_informative</code> collects both error coefficients into a single tensor bound G by also requiring G ≥ M(M + 2U<sub>2</sub>). In the normalized theorem just proved, C<sub>T</sub> absorbs the two coefficients separately. The main theorem has no hypothesis involving G.</p>
+</section>
+<section id="references" data-title="Sources and proof locations">
+<h2>Sources and proof locations</h2>
+<p class="reference"><b>[1] OpenAI.</b> <a href="https://cdn.openai.com/pdf/32d9f210-8b73-45e0-91bc-82a30aef8a9a/navier-stokes.pdf#page=123">Finite Time Blowup for Navier–Stokes</a>. The 166-page manuscript, Lemma 10.5, pp. 121–123, equations (10.18)–(10.19).</p>
+<p class="reference"><b>[2] A. Bastounis, F. Circelli and A. C. Hansen.</b> <a href="https://arxiv.org/html/2610.08144v1#S3.SS2">Navier-Stokes lost in translation: Why Lean verification of AI autoformalisation does not guarantee correct natural language proofs</a>. arXiv:2610.08144v1, §3.2 (6 October 2026).</p>
+<p class="reference"><b>[3] KokunoYumeto.</b> <a href="https://github.com/KokunoYumeto/yang-mills-interacting-workbench/blob/e0a04c078eaf0209e40b3d47d6f6dffb3f2a3e7f/navier-stokes/navier_stokes_workbench.tex#L5124-L5177">Navier–Stokes workbench, equation (E.21)</a>. TeX source at commit e0a04c0, dated 9 September 2026. The pinned lines display the weighted interpolation and normalized inequality.</p>
+<p class="reference"><b>[4] Open Maths.</b> <a href="https://openmaths.org/courses/NS-BLOWUP/audits/lemma_10_5_reaudit.html">Whole-space comparison and quantitative bounds</a>. Lemma 10.5 re-audit, especially equations (18)–(33).</p>
+<p class="reference"><b>[5] MathGraph.</b> <a href="https://github.com/metalogiclabs/mathgraph/blob/c60203550c295d4709e7af2618cfb55831a501de/experiments/navier_stokes_semantic_bridge_v1/LegacyCanonicalPressure.lean#L80-L110">Legacy canonical pressure estimate</a>, commit c602035. See <a href="https://github.com/metalogiclabs/mathgraph/pull/142">PR 142</a> for the transpose identity, <a href="https://github.com/metalogiclabs/mathgraph/pull/143">PR 143</a> for the checked estimate, and <a href="https://github.com/metalogiclabs/mathgraph/pull/146">PR 146</a> for later comparison work. The numerical specialization on page 3 uses <a href="https://github.com/openai/NavierStokesAndEuler/blob/f9e8bc5b38b6e212696e8a30e3e91517af887bbd/NavierStokes/R3StressPressureEstimate.lean#L24-L36">the pinned rawBound definition</a>.</p>
+<p class="reference"><b>[6] I. Bourakkadi.</b> <a href="https://github.com/idriss-bourakkadi/NavierStokesRefereeAudit/blob/12051b5c5ee4229f059d686cfcf3022b84f81385/NavierStokesRefereeAudit/Layer7_UniquenessAndBenchmarks.lean">NavierStokesRefereeAudit, Layer7_UniquenessAndBenchmarks.lean</a>. Pinned Layer 7 source, commit 12051b5 (November 2026).</p>
+<p class="reference"><b>[7] B. Hunt.</b> <a href="https://falsegreen.com/papers/paperA.pdf">The Lean Code Is Verified; the Paper’s Argument Is Not: A Counterexample to the Pressure-Flux Estimate in “Finite Time Blowup for Navier–Stokes”</a>. FalseGreen paper A, §§4–5, 8.</p>
+<p class="reference"><b>[8] OpenAI.</b> <a href="https://github.com/openai/NavierStokesAndEuler/tree/f9e8bc5b38b6e212696e8a30e3e91517af887bbd">NavierStokesAndEuler, frozen source repository</a>. The original pressure-recovery and comparison developments are under NavierStokes/R3/. The companion sources are distributed in lean/.</p>
+<h3>How to locate the proof terms</h3>
+<p class="small">Declaration names in the text and Appendix A omit the common namespace <code>NavierStokesR3</code>. The companion sources are in <code>lean/</code>. Upstream declarations are in <code>NavierStokes/R3/</code> in repository [8]. The separate scalar comparison on page 3 was checked in the private audit. Its source and historical build records are outside this public distribution.</p>
+</section>
+</body></html>

@@ -1,0 +1,12 @@
+Navier–Stokes Equation (10.19) Lean Companion
+
+Research director and publication author: Troy Winarski
+ORCID: https://orcid.org/0009-0004-5956-3825
+
+The two-commutator argument and its companion Lean formalization were developed with an AI research system under human direction. See ATTRIBUTION_AND_AI_DISCLOSURE.md for the allocation of research activities.
+
+Primary paper: "A Lean-Verified Alternative Proof of the Pressure-Flux Estimate in Navier–Stokes Lemma 10.5" (18 November 2026, pre-review technical note).
+
+The 14 newly contributed Lean source files in lean/ are distributed under the Apache License, Version 2.0; see LICENSE. The original written manuscript and original documentation are distributed under CC BY 4.0; see LICENSE-DOCUMENTATION.md. Third-party materials retain their own terms.
+
+This is a companion to OpenAI's NavierStokesAndEuler formalization and does not claim independent verification of OpenAI's entire blowup proof. External reproduction and mathematical review are pending.
